@@ -24,6 +24,7 @@ from ..models.prepare_processors import get_processor
 from .ja_csv_datasets import JapaneseCSVDataset
 from .llava_datasets import LlavaDataset
 from .m3it_datasets import M3ITDataset
+from .soccernet_datasets import SoccerNetDataset
 
 
 def get_each_dataset(dataset_config: Dict, processor, max_length: int) -> Tuple[Dataset, Dataset]:
@@ -40,6 +41,10 @@ def get_each_dataset(dataset_config: Dict, processor, max_length: int) -> Tuple[
     elif dataset_config["dataset_type"] == "llava":
         train_dataset = LlavaDataset.create(dataset_config, processor, max_length, "train")
         val_dataset = LlavaDataset.create(dataset_config, processor, max_length, "validation")
+
+    elif dataset_config["dataset_type"] == "soccernet":
+        train_dataset = SoccerNetDataset.create(dataset_config, processor, max_length, "train")
+        val_dataset = SoccerNetDataset.create(dataset_config, processor, max_length, "validation")
 
     else:
         raise ValueError(f"dataset_type: {dataset_config['dataset_type']} is not supported.")
