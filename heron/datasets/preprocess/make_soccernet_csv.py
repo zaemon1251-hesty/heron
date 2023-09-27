@@ -157,7 +157,7 @@ class Stage2:
         extract_video_args = []
 
         # imageの保存先
-        dst_image_dir = os.path.join(self.dst_dir, "raw_images")
+        dst_image_dir = os.path.join(self.dst_dir, f"raw_images_{self.split}")
 
         for data in datas:
             prompt = ""

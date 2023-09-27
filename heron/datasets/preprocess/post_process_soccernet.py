@@ -26,7 +26,7 @@ caption_df = pd.read_csv(CAPTION_CSV_PATH, delimiter=",", dtype=str)
 metadata_df = pd.read_csv(METADETA_CSV_PATH, delimiter=",", dtype=str)
 
 
-def save_modified_invalid_csv():
+def save_modified_invalid_csv(invalid_df):
     # Extract the portion after "raw_images/" as videoID
     invalid_df["videoID"] = invalid_df["dst_images_path"].str.extract(
         r"raw_images/(.*)"
@@ -38,9 +38,10 @@ def save_modified_invalid_csv():
     ]
 
     invalid_df.to_csv(INVALID_CSV_PATH, index=False)
+    return invalid_df
 
 
-save_modified_invalid_csv()
+invalid_df = save_modified_invalid_csv(invalid_df)
 
 merged_train_df = pd.merge(
     caption_df, metadata_df, how="left", on="caption"

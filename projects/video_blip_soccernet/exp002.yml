@@ -22,7 +22,7 @@ model_config:
   pretrained_path: /raid/moriy/model/heron/video_blip_soccernet/video_blip_soccernet/exp001/video_blip_soccernet/exp001_final
   model_type: video_blip
   language_model_name: "stabilityai/japanese-stablelm-base-alpha-7b"
-  num_image_with_embedding: 1 # 1 for image, otherwise for number of video sequences
+  num_image_with_embedding: 16 # 1 for image, otherwise for number of video sequences
   max_length: 256
   keys_to_finetune: []
   keys_to_freeze:

@@ -96,6 +96,7 @@ class SoccerNetDataset(ResilientDataset):
             video_id = "%10d" % row["videoID"]
 
             # TODO 色々歪な処理なので直す
+            # TODO raw_images → raw_images_{split}に変更する
             exact_img_path = os.path.join(
                 self.dataset_root, "data/SoccerNet/raw_images", video_id, img_path
             )
