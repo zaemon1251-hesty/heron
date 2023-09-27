@@ -68,7 +68,9 @@ def main(config_file: str, local_rank: int = 0):
     if model_config.get("pretrained_path") is not None:
         print("load pretrained")
         load_pretrained_weight(model, model_config["pretrained_path"])
-        print(f'Successfully loading pretrained weights from {model_config["pretrained_path"]}')
+        print(
+            f'Successfully loading pretrained weights from {model_config["pretrained_path"]}'
+        )
 
     # Set trainable params
     trainable_list, untrainable_list = set_trainable_params(
@@ -80,7 +82,7 @@ def main(config_file: str, local_rank: int = 0):
     trainer = Trainer(
         model=model,
         train_dataset=train_dataset,
-        eval_dataset=val_dataset,
+        # eval_dataset=val_dataset,
         args=training_args,
     )
 

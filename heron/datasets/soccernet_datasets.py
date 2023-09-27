@@ -23,6 +23,7 @@ from PIL import Image
 from torch.utils.data import ConcatDataset
 import pandas as pd
 import os
+import ast
 
 from .base_datasets import ResilientDataset
 
@@ -38,12 +39,14 @@ class SoccerNetDataset(ResilientDataset):
         processor: HFProcessor,
         max_length: int,
         is_inference: bool = False,
+        dataset_root: str = "./",
     ):
         super(SoccerNetDataset, self).__init__(is_inference)
         self.loaded_dataset = loaded_dataset
         self.max_length = max_length
         self.processor = processor
         self.is_inference = is_inference
+        self.dataset_root = dataset_root
 
     @classmethod
     def create(
@@ -55,19 +58,21 @@ class SoccerNetDataset(ResilientDataset):
         is_inference: bool = False,
     ):
         dataset_root = dataset_config["dataset_root"]
-        target_dataset_list = []
-        if "coco" in dataset_config["dataset_names"]:
-            if split == "train":
-                df_train = pd.read_csv(os.path.join(dataset_root, "data/coco/df_train.csv"))
-                target_dataset_list.append(df_train)
-            else:
-                df_val = pd.read_csv(os.path.join(dataset_root, "data/coco/df_val.csv"))
-                target_dataset_list.append(df_val)
+        target_dataset = pd.DataFrame()
 
-        target_dataframe = pd.concat(target_dataset_list, axis=0, ignore_index=True)
+        if split == "train":
+            df_train = pd.read_csv(
+                os.path.join(
+                    dataset_root, "data/SoccerNet/soccernet_train_merged_cleaned.csv"
+                )
+            )
+            target_dataset = df_train
+        else:
+            # TODO validationのデータセットを作る
+            pass
 
         return cls(
-            target_dataframe,
+            target_dataset,
             processor,
             max_length,
             is_inference=is_inference,
@@ -79,35 +84,45 @@ class SoccerNetDataset(ResilientDataset):
 
     def _get_item_train(self, index):
         # cf: https://huggingface.co/datasets/MMInstruction/M3IT#data-instances
-        row = self.loaded_dataset[index]
+        row = self.loaded_dataset.iloc[index]
 
-        # # some of nlvr data were broken
-        # instruction = row["instruction"]  # str
-        # question = row["inputs"]  # str
-        # answer = row["outputs"]  # str
-        # text = f"##human: {instruction} {question}\n##gpt: {answer}"
+        # some of nlvr data were broken
+        caption = row["caption"]  # str
 
-        # # imageのロード
-        # image_base64_str_list = row["image_base64_str"]  # str (base64)
-        # img = Image.open(BytesIO(b64decode(image_base64_str_list[0]))).convert("RGB")
-        # img = np.array(img)
-        # if img.shape[2] != 3:
-        #     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        # imageのロード
+        img_path_list = ast.literal_eval(row["img_path"])
+        imgs = []
+        for img_path in img_path_list:
+            video_id = "%10d" % row["videoID"]
 
-        # inputs = self.processor(
-        #     images=img,
-        #     text=text,
-        #     return_tensors="pt",
-        #     max_length=self.max_length,
-        #     padding="max_length",
-        #     truncation=True,
-        # )
-        # # batch size 1 -> unbatch
-        # inputs = {k: v[0] for k, v in inputs.items()}
-        # inputs["labels"] = inputs["input_ids"]
-        # return inputs
+            # TODO 色々歪な処理なので直す
+            exact_img_path = os.path.join(
+                self.dataset_root, "data/SoccerNet/raw_images", video_id, img_path
+            )
+
+            img = Image.open(exact_img_path).convert("RGB")
+            img = np.array(img)
+            if img.shape[2] != 3:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            imgs.append(img)
+
+        inputs = self.processor(
+            images=imgs,
+            text=caption,
+            return_tensors="pt",
+            max_length=self.max_length,
+            padding="max_length",
+            truncation=True,
+        )
+        # batch size 1 -> unbatch
+        inputs = {k: v[0] for k, v in inputs.items()}
+        inputs["labels"] = inputs["input_ids"]
+        return inputs
 
     def _get_item_inference(self, index):
+        # TODO  inferenceの実装
+        return None, None, None
+
         # cf: https://huggingface.co/datasets/MMInstruction/M3IT#data-instances
         # row = self.loaded_dataset[index]
 
@@ -131,3 +146,13 @@ class SoccerNetDataset(ResilientDataset):
         # )
         # inputs["labels"] = None
         # return inputs, img, answer
+
+
+if __name__ == "__main__":
+    dataset_config = {}
+    processor = None
+    max_length = 0
+    train_datsaet = SoccerNetDataset.create(
+        dataset_config, processor, max_length, "train"
+    )
+    print(train_datsaet[0])

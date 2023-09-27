@@ -33,10 +33,11 @@ from multiprocessing import Pool
 import subprocess
 
 
-SOCCERNET_PATH = "/raid_elmo/home/lr/moriy/SoccerNet"   # noqa
+SOCCERNET_PATH = "/raid_elmo/home/lr/moriy/SoccerNet"  # noqa
 
 
 DST_DATASET_PATH = "/raid_elmo/home/lr/moriy/heron/data/SoccerNet"  # noqa
+
 
 IMAGE_FILENAME_FORMAT = "frame_%04d.jpg"
 
@@ -134,9 +135,15 @@ class Stage2:
         self.dst_dir = dst_dir
         self.split = split
 
-        self.invalid_data_file = os.path.join(self.dst_dir, f"invalid_data_{self.split}.csv") # noqa
-        self.csv_path = os.path.join(self.dst_dir, f"soccernet_{self.split}.csv") # noqa
-        self.csv_game_subinfo_path = os.path.join(self.dst_dir, f"soccernet_{self.split}_game_subinfo.csv") # noqa
+        self.invalid_data_file = os.path.join(
+            self.dst_dir, f"invalid_data_{self.split}.csv"
+        )  # noqa
+        self.csv_path = os.path.join(
+            self.dst_dir, f"soccernet_{self.split}.csv"
+        )  # noqa
+        self.csv_game_subinfo_path = os.path.join(
+            self.dst_dir, f"soccernet_{self.split}_game_subinfo.csv"
+        )  # noqa
 
         os.makedirs(self.dst_dir, exist_ok=True)
 
@@ -164,7 +171,9 @@ class Stage2:
             prompt_list.append(prompt)
             caption_list.append(caption)
 
-            extract_video_args.append((src_video_path, dst_images_path, spotTime))
+            extract_video_args.append(
+                (src_video_path, dst_images_path, spotTime, videoID)
+            )
 
         # この記述がないと関数をpickel化できない
         global _video_clipping_worker
@@ -174,9 +183,9 @@ class Stage2:
             if not status:
                 logger.warning(f"Failed to extract video: {repr(args)}")
                 logger.warning(message)
-                # args = (src_video_path, dst_video_path, spotTime)
-                # return dst_video_path, src_video_path, spotTime, message
-                return args[1], args[0], args[2], message
+                # args = (src_video_path, dst_video_path, spotTime, videoID)
+                # return videoID, dst_video_path, src_video_path, spotTime, message
+                return args[3], args[1], args[0], args[2], message
             return None
 
         with Pool(multiprocessing.cpu_count()) as p:
@@ -191,9 +200,7 @@ class Stage2:
         img_path_list = []
         for img_path_origin in img_path_origin_list:
             sorted_img_path_list = sorted(os.listdir(img_path_origin))
-            img_path_list.append(
-                sorted_img_path_list
-            )
+            img_path_list.append(sorted_img_path_list)
 
         # write csv
         df = pd.DataFrame(
@@ -220,12 +227,18 @@ class Stage2:
         invalid_data = [res for res in results if res is not None]
         invalid_data = pd.DataFrame(
             invalid_data,
-            columns=["dst_video_path", "src_video_path", "spotTime", "message"]
+            columns=[
+                "videoID",
+                "dst_images_path",
+                "src_video_path",
+                "spotTime",
+                "message",
+            ],
         )
-        invalid_data.to_csv(self.invalid_data_file, index=False) # noqa
+        invalid_data.to_csv(self.invalid_data_file, index=False)  # noqa
 
     def extract_video_to_images(
-        self, src_video_path: str, dst_image_dir: str, spotTime: int | float
+        self, src_video_path: str, dst_image_dir: str, spotTime: int | float, *args
     ):
         # TODO: 並列処理の効率化のために、一連のエラーハンドリングは上位で行いたい
         # Ensure the destination directory exists or create it
@@ -289,9 +302,7 @@ def main(args):
     stage1 = Stage1(args.soccernet_path, args.split)
     datas = stage1.run()
 
-    stage2 = Stage2(
-        args.dst_data_path, args.split, args.window_size, args.framerate
-    )
+    stage2 = Stage2(args.dst_data_path, args.split, args.window_size, args.framerate)
     stage2.run(datas)
 
 
