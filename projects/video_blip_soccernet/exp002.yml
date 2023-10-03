@@ -1,8 +1,8 @@
 training_config:
-  per_device_train_batch_size: 2
-  per_device_eval_batch_size: 2
+  per_device_train_batch_size: 1
+  per_device_eval_batch_size: 1
   gradient_accumulation_steps: 16
-  num_train_epochs: 5
+  num_train_epochs: 50
   dataloader_num_workers: 8
   fp16: true
   optim: "adamw_torch"
@@ -10,8 +10,12 @@ training_config:
   logging_steps: 10
   evaluation_strategy: "steps"
   save_strategy: "steps"
-  eval_steps: 1000
-  save_steps: 4000
+  do_train: False              # 学習を行わない
+  do_eval: True            # 評価のみを行う
+  logging_dir: "./log"         # ログの保存場所
+
+  # eval_steps: 1500
+  # save_steps: 1000
   save_total_limit: 5
   deepspeed: ./configs/deepspeed/ds_config_zero1.json
   output_dir: /raid/moriy/model/heron/video_blip_soccernet/
@@ -19,16 +23,25 @@ training_config:
 
 model_config:
   fp16: true
-  pretrained_path: /raid/moriy/model/heron/video_blip_soccernet/video_blip_soccernet/exp001/video_blip_soccernet/exp001_final
+  #pretrained_path:  # None or path to model weight
   model_type: video_blip
-  language_model_name: "stabilityai/japanese-stablelm-base-alpha-7b"
+  language_model_name: stabilityai/japanese-stablelm-base-alpha-7b
   num_image_with_embedding: 16 # 1 for image, otherwise for number of video sequences
-  max_length: 256
+  max_length: 128
   keys_to_finetune: []
   keys_to_freeze:
     - vision_model
+    - language_model
 
   use_lora: false
+  lora:
+    r: 8
+    lora_alpha: 32
+    target_modules:
+      - query_key_value
+    lora_dropout: 0.01
+    bias: none
+    task_type: CAUSAL_LM
 
 dataset_config_path: 
   - ./configs/datasets/soccernet.yaml

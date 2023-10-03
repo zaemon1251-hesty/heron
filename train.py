@@ -31,6 +31,8 @@ from heron.models.utils import (
 )
 from heron.models.vision_language_trainer import VisionLanguageTrainer as Trainer
 
+from evaluator import Evaler
+
 GitLLMForCausalLM = Any
 
 
@@ -79,15 +81,27 @@ def main(config_file: str, local_rank: int = 0):
     print("trainable_list", trainable_list)
     print("untrainable_list", untrainable_list)
 
+    tokenizer = train_dataset.datasets[0].processor.tokenizer
+    # spacyの特別なトークンをリストとしてまとめる
+    special_tokens_list = ["[PLAYER]", "[COACH]", "[TEAM]", "([TEAM])", "[REFEREE]"]
+    # transformersのトークナイザに特別なトークンを追加
+    special_tokens_dict = {"additional_special_tokens": special_tokens_list}
+    _ = tokenizer.add_special_tokens(special_tokens_dict)
+    model.language_model.resize_token_embeddings(len(tokenizer))
+
+    evaler = Evaler(tokenizer)
+
     trainer = Trainer(
         model=model,
         train_dataset=train_dataset,
-        # eval_dataset=val_dataset,
+        eval_dataset=val_dataset,
         args=training_args,
+        compute_metrics=evaler.compute_metrics_b,
     )
 
     with torch.autocast("cuda"):
-        trainer.train()
+        # trainer.train()
+        trainer.evaluate(eval_dataset=val_dataset)
 
     # Save the finel checkpoint
     if os.environ.get("WANDB_NAME") is not None:

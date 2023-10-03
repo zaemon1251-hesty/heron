@@ -36,25 +36,33 @@ video_blip をファインチューニングしてみたい。
    - [x] 現状の SoccerNet 形式の調査(SwinBERT で使えるように変換した際に、既にうまくできるようになったら嬉しい..?)
    - [x] 差分をどう埋めるか考える
    - [x] データセットの変換
-   - [ ] validation 用のデータセットを作成する
+   - [x] validation 用のデータセットを作成する
 
 3. 実際の学習に必要な追加すべきファイルを作成する
 
    - [x] datasets/soccernet_datasets.py
    - [x] configs/datasets/soccernet.yaml
    - [x] projects/video_blip/simple.yml
-   - [ ] なんらかの評価モジュール (trainer に compute_metrics Callback 引数に渡せる形にする。)
-     - [ ] blue, rouge, cider, meteor などの実装？
+   - [x] なんらかの評価モジュール (trainer に compute_metrics Callback 引数に渡せる形にする。)
+     - [x] blue
+     - [x] rouge
+     - [ ] cider
+     - [ ] meteor
+
 
 4. 学習を実行する
 
    - [x] コード作成 scripts/run.sh
    - [x] 実行 (おそらく gpu20 でやる)
+     - うまく学習できてなさそう。
    - [ ] 工夫、PDCA
+     - [ ] まずはTraining中に評価指標を計算できるようにする (compute_metricsの実装→eval時メモリエラーが起こるので要デバッグ)
+     - [ ] サブタスクに分解する？
+         image-encoder, qformer で正しく画像を認識しできない問題: action spotting, シーングラフ予測
+     - [ ] 小さく試行錯誤を繰り返す?
+         - [ ] LoRA なし、image-encoder, llm をフリーズして学習
+         - [ ] LoRA のパラメータ探索
+         - [ ] 非文を生成する問題：もう少し小さな LM での学習を試す（LSTM）
    - [ ] 定量評価
    - [ ] 定性評価
    - [ ] EvalAI に challenge data の推論結果 を提出
-
-```
-
-```

@@ -13,18 +13,13 @@
 # limitations under the License.
 
 
-from base64 import b64decode
-from io import BytesIO
-
 import cv2
-import datasets
 import numpy as np
 from PIL import Image
 from torch.utils.data import ConcatDataset
 import pandas as pd
 import os
 import ast
-
 from .base_datasets import ResilientDataset
 
 HFProcessor = "HFProcessor"
@@ -40,6 +35,7 @@ class SoccerNetDataset(ResilientDataset):
         max_length: int,
         is_inference: bool = False,
         dataset_root: str = "./",
+        num_frames: int = 16,
     ):
         super(SoccerNetDataset, self).__init__(is_inference)
         self.loaded_dataset = loaded_dataset
@@ -47,6 +43,7 @@ class SoccerNetDataset(ResilientDataset):
         self.processor = processor
         self.is_inference = is_inference
         self.dataset_root = dataset_root
+        self.num_frames = num_frames
 
     @classmethod
     def create(
@@ -58,18 +55,25 @@ class SoccerNetDataset(ResilientDataset):
         is_inference: bool = False,
     ):
         dataset_root = dataset_config["dataset_root"]
+        num_frames = dataset_config["num_frames"]
         target_dataset = pd.DataFrame()
 
         if split == "train":
             df_train = pd.read_csv(
                 os.path.join(
                     dataset_root, "data/SoccerNet/soccernet_train_merged_cleaned.csv"
-                )
+                ),
+                delimiter=",",
             )
-            target_dataset = df_train
+            target_dataset = df_train.sample(n=250, random_state=42)
         else:
-            # TODO validationのデータセットを作る
-            pass
+            df_valid = pd.read_csv(
+                os.path.join(
+                    dataset_root, "data/SoccerNet/soccernet_valid_merged_cleaned.csv"
+                ),
+                delimiter=",",
+            )
+            target_dataset = df_valid.sample(n=250, random_state=42)
 
         return cls(
             target_dataset,
@@ -77,6 +81,7 @@ class SoccerNetDataset(ResilientDataset):
             max_length,
             is_inference=is_inference,
             dataset_root=dataset_root,
+            num_frames=num_frames,
         )
 
     def __len__(self) -> int:
@@ -88,28 +93,13 @@ class SoccerNetDataset(ResilientDataset):
 
         # some of nlvr data were broken
         caption = row["caption"]  # str
-
-        # imageのロード
-        img_path_list = ast.literal_eval(row["img_path"])
-        imgs = []
-        for img_path in img_path_list:
-            video_id = "%10d" % row["videoID"]
-
-            # TODO 色々歪な処理なので直す
-            # TODO raw_images → raw_images_{split}に変更する
-            exact_img_path = os.path.join(
-                self.dataset_root, "data/SoccerNet/raw_images", video_id, img_path
-            )
-
-            img = Image.open(exact_img_path).convert("RGB")
-            img = np.array(img)
-            if img.shape[2] != 3:
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-            imgs.append(img)
+        prompt = row["prompt"]  # str
+        text = f"##Instrcution:{prompt} \n##Caption:{caption}"
+        imgs = self._get_iamges(row["videoID"], row["img_path"])
 
         inputs = self.processor(
             images=imgs,
-            text=caption,
+            text=text,
             return_tensors="pt",
             max_length=self.max_length,
             padding="max_length",
@@ -121,32 +111,49 @@ class SoccerNetDataset(ResilientDataset):
         return inputs
 
     def _get_item_inference(self, index):
-        # TODO  inferenceの実装
-        return None, None, None
-
         # cf: https://huggingface.co/datasets/MMInstruction/M3IT#data-instances
-        # row = self.loaded_dataset[index]
+        row = self.loaded_dataset.iloc[index]
+        # some of nlvr data were broken
+        prompt = row["prompt"]  # str
+        answer = row["caption"]  # str
+        text = f"##Instrcution:{prompt} \n##Caption:"
 
-        # # some of nlvr data were broken
-        # instruction = row["instruction"]  # str
-        # question = row["inputs"]  # str
-        # answer = row["outputs"]  # str
-        # text = f"##Instruction: {instruction} ##Question: {question} ##Answer: "
+        imgs = self._get_iamges(row["videoID"], row["img_path"])
 
-        # # imageのロード
-        # image_base64_str_list = row["image_base64_str"]  # str (base64)
-        # img = Image.open(BytesIO(b64decode(image_base64_str_list[0]))).convert("RGB")
-        # img = np.array(img)
-        # if img.shape[2] != 3:
-        #     img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        inputs = self.processor(
+            images=imgs,
+            text=text,
+            return_tensors="pt",
+        )
+        inputs["labels"] = None
+        return inputs, answer
 
-        # inputs = self.processor(
-        #     text,
-        #     img,
-        #     return_tensors="pt",
-        # )
-        # inputs["labels"] = None
-        # return inputs, img, answer
+    def _get_iamges(self, video_id, image_paths_str):
+        video_id = "%10d" % video_id
+        # imageのロード
+        img_path_list: list
+        img_path_list = ast.literal_eval(image_paths_str)
+
+        # 画像の枚数が16枚になるようにする
+        while len(img_path_list) < self.num_frames:
+            img_path_list.append(img_path_list[-1])
+            if len(img_path_list) == self.num_frames:
+                break
+            img_path_list.insert(0, img_path_list[0])
+
+        imgs = []
+        for img_path in img_path_list:
+            # TODO 色々歪な処理なので直す
+            # TODO raw_images → raw_images_{split}に変更する
+            exact_img_path = os.path.join(
+                self.dataset_root, "data/SoccerNet/raw_images", video_id, img_path
+            )
+            img = Image.open(exact_img_path).convert("RGB")
+            img = np.array(img)
+            if img.shape[2] != 3:
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            imgs.append(img)
+        return imgs
 
 
 if __name__ == "__main__":
