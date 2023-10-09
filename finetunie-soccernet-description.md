@@ -49,7 +49,6 @@ video_blip をファインチューニングしてみたい。
      - [ ] cider
      - [ ] meteor
 
-
 4. 学習を実行する
 
    - [x] コード作成 scripts/run.sh

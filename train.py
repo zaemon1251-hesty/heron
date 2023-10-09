@@ -31,7 +31,7 @@ from heron.models.utils import (
 )
 from heron.models.vision_language_trainer import VisionLanguageTrainer as Trainer
 
-from evaluator import Evaler
+from evaluator import Evaler  # noqa
 
 GitLLMForCausalLM = Any
 
@@ -89,19 +89,17 @@ def main(config_file: str, local_rank: int = 0):
     _ = tokenizer.add_special_tokens(special_tokens_dict)
     model.language_model.resize_token_embeddings(len(tokenizer))
 
-    evaler = Evaler(tokenizer)
+    # evaler = Evaler(tokenizer)
 
     trainer = Trainer(
         model=model,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
         args=training_args,
-        compute_metrics=evaler.compute_metrics_b,
     )
 
     with torch.autocast("cuda"):
-        # trainer.train()
-        trainer.evaluate(eval_dataset=val_dataset)
+        trainer.train()
 
     # Save the finel checkpoint
     if os.environ.get("WANDB_NAME") is not None:

@@ -23,7 +23,7 @@ training_config:
 
 model_config:
   fp16: true
-  #pretrained_path:  # None or path to model weight
+  pretrained_path: /raid/moriy/model/heron/video_blip_soccernet/exp002/video_blip_soccernet/exp002_final
   model_type: video_blip
   language_model_name: daryl149/llama-2-7b-chat-hf
   num_image_with_embedding: 16 # 1 for image, otherwise for number of video sequences

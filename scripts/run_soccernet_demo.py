@@ -4,10 +4,12 @@ import numpy as np
 import cv2
 from PIL import Image
 import torch
-from transformers import AutoProcessor
+from transformers import AutoProcessor, AutoTokenizer
 from loguru import logger
 import yaml
 from datetime import datetime
+import os
+from itertools import product
 
 # Ensure heron.models.utils can be imported
 try:
@@ -21,7 +23,7 @@ except ModuleNotFoundError:
 current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 log_filename = f"log/demo_{current_time}.log"
 
-logger.add("log/demo.log", rotation="500 MB")
+logger.add(log_filename, rotation="500 MB")
 
 
 def load_config(config_file_path):
@@ -30,8 +32,15 @@ def load_config(config_file_path):
     return config["model_config"], config["training_config"]
 
 
-def prepare_model(model_config, device_id):
+def prepare_model(model_config, tokenizer, device_id):
     model = load_model(model_config)
+
+    # spacyの特別なトークンをリストとしてまとめる
+    special_tokens_list = ["[PLAYER]", "[COACH]", "[TEAM]", "([TEAM])", "[REFEREE]"]
+    # transformersのトークナイザに特別なトークンを追加
+    special_tokens_dict = {"additional_special_tokens": special_tokens_list}
+    _ = tokenizer.add_special_tokens(special_tokens_dict)
+    model.language_model.resize_token_embeddings(len(tokenizer))
 
     # load pretrained weight
     if model_config.get("pretrained_path") is not None:
@@ -46,12 +55,28 @@ def prepare_model(model_config, device_id):
     return model
 
 
-def prepare_inputs(img_path, processor, model_config, device_id):
-    img = Image.open(img_path).convert("RGB")
-    img = np.array(img)
-    if img.shape[2] != 3:
-        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-    imgs = [img]
+def prepare_inputs(img_dir_path, processor, model_config, device_id):
+    # 画像の枚数が16枚になるようにする
+    img_path_list = os.listdir(img_dir_path)
+    while len(img_path_list) < model_config["num_image_with_embedding"]:
+        img_path_list.append(img_path_list[-1])
+        if len(img_path_list) == model_config["num_image_with_embedding"]:
+            break
+        img_path_list.insert(0, img_path_list[0])
+
+    imgs = []
+    for img_filename in img_path_list:
+        exact_img_path = os.path.join(img_dir_path, img_filename)
+        img = Image.open(exact_img_path).convert("RGB")
+        img = np.array(img)
+        if img.shape[2] != 3:
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+        imgs.append(img)
+
+    print(f"Number of images: {len(imgs)}")
+    logger.info(f"Number of images: {len(imgs)}")
+    logger.info(f"Image shape: {imgs[0].shape}")
+
     prompt = "This is soccer video frames. Make a caption with emotion and detail information."
     text = f"##Instrcution:{prompt} \n##Caption:"
 
@@ -64,7 +89,7 @@ def prepare_inputs(img_path, processor, model_config, device_id):
         truncation=True,
     )
     inputs = {k: v.to(f"cuda:{device_id}") for k, v in inputs.items()}
-    inputs["pixel_values"] = inputs["pixel_values"].half()
+    inputs["pixel_values"] = inputs["pixel_values"].half().unsqueeze(0)
 
     return inputs
 
@@ -110,11 +135,26 @@ def parse_arguments():
 
 
 def main(args):
-    model_config, training_config = load_config(args.config_file_path)
-    model = prepare_model(model_config, args.device_id)
+    model_config, _ = load_config(args.config_file_path)
+    logger.info(model_config)
 
     processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
+
+    if model_config.get("pretrained_path") is not None:
+        processor.tokenizer = AutoTokenizer.from_pretrained(
+            model_config.get("pretrained_path")
+        )
+
+    model = prepare_model(model_config, processor.tokenizer, args.device_id)
+
     inputs = prepare_inputs(args.img_path, processor, model_config, args.device_id)
+    logger.info(
+        {k: v.shape if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+    )
+
+    temperature_params = [0.01, 0.3, 0.7, 1.0]
+    top_p_params = [0.8, 0.9, 0.95, 1.0]
+    repetition_penalty_params = [0.9, 1.0, 1.1, 1.2]
 
     generation_kwargs = {
         "do_sample": True,
@@ -123,13 +163,24 @@ def main(args):
         "top_k": 0,
         "repetition_penalty": 1.1,
     }
+    generated_captions = {}
 
-    generated_caption = generate_caption(
-        model, inputs, processor, model_config, generation_kwargs
-    )
+    for temperature, top_p, repetition_penalty in product(
+        temperature_params, top_p_params, repetition_penalty_params
+    ):
+        generation_kwargs["temperature"] = temperature
+        generation_kwargs["top_p"] = top_p
+        generation_kwargs["repetition_penalty"] = repetition_penalty
 
-    logger.info(generated_caption)
+        generated_caption = generate_caption(
+            model, inputs, processor, model_config, generation_kwargs
+        )
+        generated_captions[
+            f"temperature: {temperature}, top_p: {top_p}, repetition_penalty: {repetition_penalty}"
+        ] = generated_caption
+
     logger.info(args.gold_caption)
+    logger.info(generated_caption)
 
 
 if __name__ == "__main__":
