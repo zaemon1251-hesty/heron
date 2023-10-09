@@ -33,21 +33,32 @@ from torch.nn import CrossEntropyLoss
 from torch.nn import functional as F
 from transformers.activations import ACT2FN
 from transformers.modeling_outputs import (
-    BaseModelOutput, BaseModelOutputWithPastAndCrossAttentions,
-    BaseModelOutputWithPooling, BaseModelOutputWithPoolingAndCrossAttentions)
+    BaseModelOutput,
+    BaseModelOutputWithPastAndCrossAttentions,
+    BaseModelOutputWithPooling,
+    BaseModelOutputWithPoolingAndCrossAttentions,
+)
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.auto import (AutoModelForCausalLM,
-                                      AutoModelForSeq2SeqLM)
-from transformers.pytorch_utils import (apply_chunking_to_forward,
-                                        find_pruneable_heads_and_indices,
-                                        prune_linear_layer)
-from transformers.utils import (ModelOutput, add_start_docstrings,
-                                add_start_docstrings_to_model_forward, logging,
-                                replace_return_docstrings)
+from transformers.models.auto import AutoModelForCausalLM, AutoModelForSeq2SeqLM
+from transformers.pytorch_utils import (
+    apply_chunking_to_forward,
+    find_pruneable_heads_and_indices,
+    prune_linear_layer,
+)
+from transformers.utils import (
+    ModelOutput,
+    add_start_docstrings,
+    add_start_docstrings_to_model_forward,
+    logging,
+    replace_return_docstrings,
+)
 
 from .bert import BertOnlyMLMHead
-from .configuration_video_blip import (VideoBlipConfig, VideoBlipQFormerConfig,
-                                       VideoBlipVisionConfig)
+from .configuration_video_blip import (
+    VideoBlipConfig,
+    VideoBlipQFormerConfig,
+    VideoBlipVisionConfig,
+)
 
 logger = logging.get_logger(__name__)
 
@@ -115,19 +126,23 @@ class VideoBlipVisionEmbeddings(nn.Module):
         self.num_patches = (self.image_size // self.patch_size) ** 2
         self.num_positions = self.num_patches + 1
 
-        self.position_embedding = nn.Parameter(torch.randn(1, self.num_positions, self.embed_dim))
+        self.position_embedding = nn.Parameter(
+            torch.randn(1, self.num_positions, self.embed_dim)
+        )
 
     def forward(self, pixel_values: torch.FloatTensor) -> torch.Tensor:
         batch_size = pixel_values.shape[0]
         target_dtype = self.patch_embedding.weight.dtype
-        patch_embeds = self.patch_embedding(pixel_values)  # shape = [*, width, grid, grid]
+        patch_embeds = self.patch_embedding(
+            pixel_values
+        )  # shape = [*, width, grid, grid]
         patch_embeds = patch_embeds.flatten(2).transpose(1, 2)
 
         class_embeds = self.class_embedding.expand(batch_size, 1, -1).to(target_dtype)
         embeddings = torch.cat([class_embeds, patch_embeds], dim=1)
-        embeddings = embeddings + self.position_embedding[:, : embeddings.size(1), :].to(
-            target_dtype
-        )
+        embeddings = embeddings + self.position_embedding[
+            :, : embeddings.size(1), :
+        ].to(target_dtype)
         return embeddings
 
 
@@ -159,14 +174,18 @@ class VideoBlipAttention(nn.Module):
             v_bias = None
 
         if q_bias is not None:
-            qkv_bias = torch.cat((q_bias, torch.zeros_like(v_bias, requires_grad=False), v_bias))
+            qkv_bias = torch.cat(
+                (q_bias, torch.zeros_like(v_bias, requires_grad=False), v_bias)
+            )
             self.qkv.bias = nn.Parameter(qkv_bias)
 
         self.projection = nn.Linear(self.embed_dim, self.embed_dim)
 
     def _shape(self, tensor: torch.Tensor, seq_len: int, bsz: int):
         return (
-            tensor.view(bsz, seq_len, self.num_heads, self.head_dim).transpose(1, 2).contiguous()
+            tensor.view(bsz, seq_len, self.num_heads, self.head_dim)
+            .transpose(1, 2)
+            .contiguous()
         )
 
     def forward(
@@ -492,14 +511,18 @@ class VideoBlipEncoder(nn.Module):
                 Whether or not to return a [`~utils.ModelOutput`] instead of a plain tuple.
         """
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         encoder_states = () if output_hidden_states else None
         all_attentions = () if output_attentions else None
@@ -538,7 +561,9 @@ class VideoBlipEncoder(nn.Module):
 
         if not return_dict:
             return tuple(
-                v for v in [hidden_states, encoder_states, all_attentions] if v is not None
+                v
+                for v in [hidden_states, encoder_states, all_attentions]
+                if v is not None
             )
         return BaseModelOutput(
             last_hidden_state=hidden_states,
@@ -579,14 +604,18 @@ class VideoBlipVisionModel(VideoBlipPreTrainedModel):
 
         """
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if pixel_values is None:
             raise ValueError("You have to specify pixel_values")
@@ -645,7 +674,9 @@ class VideoBlipQFormerMultiHeadAttention(nn.Module):
             self.value = nn.Linear(config.hidden_size, self.all_head_size)
 
         self.dropout = nn.Dropout(config.attention_probs_dropout_prob)
-        self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
+        self.position_embedding_type = getattr(
+            config, "position_embedding_type", "absolute"
+        )
         if (
             self.position_embedding_type == "relative_key"
             or self.position_embedding_type == "relative_key_query"
@@ -669,7 +700,10 @@ class VideoBlipQFormerMultiHeadAttention(nn.Module):
         return self.attention_map
 
     def transpose_for_scores(self, x):
-        new_x_shape = x.size()[:-1] + (self.num_attention_heads, self.attention_head_size)
+        new_x_shape = x.size()[:-1] + (
+            self.num_attention_heads,
+            self.attention_head_size,
+        )
         x = x.view(*new_x_shape)
         return x.permute(0, 2, 1, 3)
 
@@ -774,7 +808,9 @@ class VideoBlipQFormerMultiHeadAttention(nn.Module):
         new_context_layer_shape = context_layer.size()[:-2] + (self.all_head_size,)
         context_layer = context_layer.view(*new_context_layer_shape)
 
-        outputs = (context_layer, attention_probs) if output_attentions else (context_layer,)
+        outputs = (
+            (context_layer, attention_probs) if output_attentions else (context_layer,)
+        )
 
         outputs = outputs + (past_key_value,)
         return outputs
@@ -788,7 +824,9 @@ class VideoBlipQFormerSelfOutput(nn.Module):
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, hidden_states: torch.Tensor, input_tensor: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, hidden_states: torch.Tensor, input_tensor: torch.Tensor
+    ) -> torch.Tensor:
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
@@ -819,7 +857,9 @@ class VideoBlipQFormerAttention(nn.Module):
         self.output.dense = prune_linear_layer(self.output.dense, index, dim=1)
 
         # Update hyper params and store pruned heads
-        self.attention.num_attention_heads = self.attention.num_attention_heads - len(heads)
+        self.attention.num_attention_heads = self.attention.num_attention_heads - len(
+            heads
+        )
         self.attention.all_head_size = (
             self.attention.attention_head_size * self.attention.num_attention_heads
         )
@@ -845,7 +885,9 @@ class VideoBlipQFormerAttention(nn.Module):
             output_attentions,
         )
         attention_output = self.output(self_outputs[0], hidden_states)
-        outputs = (attention_output,) + self_outputs[1:]  # add attentions if we output them
+        outputs = (attention_output,) + self_outputs[
+            1:
+        ]  # add attentions if we output them
         return outputs
 
 
@@ -874,7 +916,9 @@ class VideoBlipQFormerOutput(nn.Module):
         self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
 
-    def forward(self, hidden_states: torch.Tensor, input_tensor: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self, hidden_states: torch.Tensor, input_tensor: torch.Tensor
+    ) -> torch.Tensor:
         hidden_states = self.dense(hidden_states)
         hidden_states = self.dropout(hidden_states)
         hidden_states = self.LayerNorm(hidden_states + input_tensor)
@@ -891,7 +935,9 @@ class VideoBlipQFormerLayer(nn.Module):
         self.layer_idx = layer_idx
 
         if layer_idx % config.cross_attention_frequency == 0:
-            self.crossattention = VideoBlipQFormerAttention(config, is_cross_attention=True)
+            self.crossattention = VideoBlipQFormerAttention(
+                config, is_cross_attention=True
+            )
             self.has_cross_attention = True
         else:
             self.has_cross_attention = False
@@ -911,7 +957,9 @@ class VideoBlipQFormerLayer(nn.Module):
         query_length=0,
     ):
         # decoder uni-directional self-attention cached key/values tuple is at positions 1,2
-        self_attn_past_key_value = past_key_value[:2] if past_key_value is not None else None
+        self_attn_past_key_value = (
+            past_key_value[:2] if past_key_value is not None else None
+        )
         self_attention_outputs = self.attention(
             hidden_states,
             attention_mask,
@@ -1032,7 +1080,9 @@ class VideoBlipQFormerEncoder(nn.Module):
 
                 def create_custom_forward(module):
                     def custom_forward(*inputs):
-                        return module(*inputs, past_key_value, output_attentions, query_length)
+                        return module(
+                            *inputs, past_key_value, output_attentions, query_length
+                        )
 
                     return custom_forward
 
@@ -1099,7 +1149,9 @@ class VideoBlipQFormerEmbeddings(nn.Module):
         self.word_embeddings = nn.Embedding(
             vocab_size, config.hidden_size, padding_idx=config.pad_token_id
         )
-        self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
+        self.position_embeddings = nn.Embedding(
+            config.max_position_embeddings, config.hidden_size
+        )
 
         self.layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
@@ -1110,7 +1162,9 @@ class VideoBlipQFormerEmbeddings(nn.Module):
             torch.arange(config.max_position_embeddings).expand((1, -1)),
             persistent=False,
         )
-        self.position_embedding_type = getattr(config, "position_embedding_type", "absolute")
+        self.position_embedding_type = getattr(
+            config, "position_embedding_type", "absolute"
+        )
 
         self.config = config
 
@@ -1134,7 +1188,9 @@ class VideoBlipQFormerEmbeddings(nn.Module):
         if input_ids is not None:
             embeddings = self.word_embeddings(input_ids)
             if self.position_embedding_type == "absolute":
-                position_embeddings = self.position_embeddings(position_ids.to(embeddings.device))
+                position_embeddings = self.position_embeddings(
+                    position_ids.to(embeddings.device)
+                )
                 embeddings = embeddings + position_embeddings
 
             if query_embeds is not None:
@@ -1262,14 +1318,18 @@ class VideoBlipQFormerModel(VideoBlipPreTrainedModel):
             `past_key_values`).
         """
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         # past_key_values_length
         past_key_values_length = (
@@ -1281,7 +1341,9 @@ class VideoBlipQFormerModel(VideoBlipPreTrainedModel):
         if input_ids is not None:
             # assert query_embeds is None, "query_embeds is not None"
             embedding_output = self.embeddings(
-                input_ids, query_embeds=query_embeds, past_key_values_length=past_key_values_length
+                input_ids,
+                query_embeds=query_embeds,
+                past_key_values_length=past_key_values_length,
             )
             # print("embedding_output", embedding_output.shape)
             query_length = embedding_output.shape[1]
@@ -1310,7 +1372,9 @@ class VideoBlipQFormerModel(VideoBlipPreTrainedModel):
         # we need to make broadcastable to [batch_size, num_heads, seq_length, seq_length]
         if encoder_hidden_states is not None:
             if type(encoder_hidden_states) == list:
-                encoder_batch_size, encoder_sequence_length, _ = encoder_hidden_states[0].size()
+                encoder_batch_size, encoder_sequence_length, _ = encoder_hidden_states[
+                    0
+                ].size()
             else:
                 (
                     encoder_batch_size,
@@ -1465,14 +1529,18 @@ class VideoBlipModel(VideoBlipPreTrainedModel):
         >>> text_features = model.get_text_features(**inputs)
         ```"""
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if self.config.use_decoder_only_language_model:
             text_outputs = self.language_model(
@@ -1532,14 +1600,18 @@ class VideoBlipModel(VideoBlipPreTrainedModel):
         >>> image_outputs = model.get_image_features(**inputs)
         ```"""
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         vision_outputs = self.vision_model(
             pixel_values=pixel_values,
@@ -1583,14 +1655,18 @@ class VideoBlipModel(VideoBlipPreTrainedModel):
         >>> qformer_outputs = model.get_qformer_features(**inputs)
         ```"""
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         vision_outputs = self.vision_model(
             pixel_values=pixel_values,
@@ -1660,7 +1736,9 @@ class VideoBlipModel(VideoBlipPreTrainedModel):
 
         >>> outputs = model(**inputs)
         ```"""
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
@@ -1778,7 +1856,9 @@ def concat_all_gather(tensor):
     if not is_dist_avail_and_initialized():
         return tensor
 
-    tensors_gather = [torch.ones_like(tensor) for _ in range(torch.distributed.get_world_size())]
+    tensors_gather = [
+        torch.ones_like(tensor) for _ in range(torch.distributed.get_world_size())
+    ]
     torch.distributed.all_gather(tensors_gather, tensor, async_op=False)
 
     output = torch.cat(tensors_gather, dim=0)
@@ -1793,7 +1873,9 @@ class GatherLayer(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, x):
-        output = [torch.zeros_like(x) for _ in range(torch.distributed.get_world_size())]
+        output = [
+            torch.zeros_like(x) for _ in range(torch.distributed.get_world_size())
+        ]
         torch.distributed.all_gather(output, x)
         return tuple(output)
 
@@ -1988,7 +2070,9 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
             )
 
         if hasattr(self.language_model, "_hf_hook"):
-            self.language_model._hf_hook.io_same_device = True  # For `generate` compatibility
+            self.language_model._hf_hook.io_same_device = (
+                True  # For `generate` compatibility
+            )
 
     @add_start_docstrings_to_model_forward(BLIP_2_INPUTS_DOCSTRING)
     @replace_return_docstrings(
@@ -2072,7 +2156,9 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         # if True:
         #    return self.forward_pretrain(pixel_values, input_ids, attention_mask, decoder_input_ids, decoder_attention_mask, output_attentions, output_hidden_states, labels, return_dict)
 
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
@@ -2129,7 +2215,8 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         )
         inputs_embeds = self.language_model.get_input_embeddings()(input_ids)
         inputs_embeds = torch.cat(
-            [language_model_inputs, inputs_embeds.to(language_model_inputs.device)], dim=1
+            [language_model_inputs, inputs_embeds.to(language_model_inputs.device)],
+            dim=1,
         )
 
         if attention_mask is None:
@@ -2203,7 +2290,9 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, VideoBlipForConditionalGenerationModelOutput]:
         """pretrain loss"""
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         # step 1: forward the images through the vision encoder,
         # to get image embeddings of shape (batch_size, seq_len, hidden_size)
@@ -2257,9 +2346,13 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         image_feats_all = concat_all_gather(
             image_feats
         )  # [batch_size*num_gpu, num_query_tokens, embed_dim]
-        text_feat_all = concat_all_gather(text_feature)  # [batch_size*num_gpu, embed_dim]
+        text_feat_all = concat_all_gather(
+            text_feature
+        )  # [batch_size*num_gpu, embed_dim]
 
-        sim_q2t = torch.matmul(image_feats.unsqueeze(1), text_feat_all.unsqueeze(-1)).squeeze()
+        sim_q2t = torch.matmul(
+            image_feats.unsqueeze(1), text_feat_all.unsqueeze(-1)
+        ).squeeze()
         # [batch_size, batch_size, num_query_tokens]
 
         # image-text similarity: aggregate across all query tokens
@@ -2317,7 +2410,9 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         text_ids_neg = torch.stack(text_ids_neg, dim=0)
         text_atts_neg = torch.stack(text_atts_neg, dim=0)
 
-        text_ids_all = torch.cat([input_ids, input_ids, text_ids_neg], dim=0)  # pos, pos, neg
+        text_ids_all = torch.cat(
+            [input_ids, input_ids, text_ids_neg], dim=0
+        )  # pos, pos, neg
         text_atts_all = torch.cat(
             [attention_mask, attention_mask, text_atts_neg],
             dim=0,
@@ -2361,9 +2456,13 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         ##================= Image Captioning ========================##
         decoder_input_ids = input_ids.clone()
         decoder_input_ids[:, 0] = self.bos_token_id
-        labels = decoder_input_ids.masked_fill(decoder_input_ids == self.pad_token_id, -100)
+        labels = decoder_input_ids.masked_fill(
+            decoder_input_ids == self.pad_token_id, -100
+        )
 
-        query_atts = torch.ones(query_tokens.size()[:-1], dtype=torch.long).to(pixel_values.device)
+        query_atts = torch.ones(query_tokens.size()[:-1], dtype=torch.long).to(
+            pixel_values.device
+        )
         attention_mask = torch.cat([query_atts, attention_mask], dim=1)
 
         lm_output = self.qformer(
@@ -2429,7 +2528,9 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
             visual_features = []
             num_frames = pixel_values.shape[1]
             for frame_idx in range(num_frames):
-                vision_outputs = self.vision_model(pixel_values=pixel_values[:, frame_idx, :, :])
+                vision_outputs = self.vision_model(
+                    pixel_values=pixel_values[:, frame_idx, :, :]
+                )
                 visual_features_frame = vision_outputs[0]
 
                 visual_features_frame += self.img_temperal_embedding[frame_idx]
@@ -2473,13 +2574,18 @@ class VideoBlipForConditionalGeneration(VideoBlipPreTrainedModel):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
         attention_mask = torch.cat(
-            [language_attention_mask, attention_mask.to(language_attention_mask.device)], dim=1
+            [
+                language_attention_mask,
+                attention_mask.to(language_attention_mask.device),
+            ],
+            dim=1,
         )
 
         # concatenate query embeddings with prompt embeddings
         inputs_embeds = self.get_input_embeddings()(input_ids)
         inputs_embeds = torch.cat(
-            [language_model_inputs, inputs_embeds.to(language_model_inputs.device)], dim=1
+            [language_model_inputs, inputs_embeds.to(language_model_inputs.device)],
+            dim=1,
         )
 
         outputs = self.language_model.generate(

@@ -19,8 +19,10 @@ import torch
 import torch.utils.checkpoint
 from torch import nn
 from torch.nn import CrossEntropyLoss
-from transformers.modeling_outputs import (BaseModelOutputWithPast,
-                                           CausalLMOutputWithPast)
+from transformers.modeling_outputs import (
+    BaseModelOutputWithPast,
+    CausalLMOutputWithPast,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import logging
 
@@ -71,7 +73,9 @@ class JapaneseStableLMAlphaModel(JapaneseStableLMAlphaPreTrainedModel):
         self.layers = nn.ModuleList(
             [DecoderLayer(config) for _ in range(config.num_hidden_layers)]
         )
-        self.final_layer_norm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.final_layer_norm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
 
         self.gradient_checkpointing = False
 
@@ -108,14 +112,18 @@ class JapaneseStableLMAlphaModel(JapaneseStableLMAlphaPreTrainedModel):
             `past_key_values`).
         """
         output_attentions = (
-            output_attentions if output_attentions is not None else self.config.output_attentions
+            output_attentions
+            if output_attentions is not None
+            else self.config.output_attentions
         )
         output_hidden_states = (
             output_hidden_states
             if output_hidden_states is not None
             else self.config.output_hidden_states
         )
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
 
         if input_ids is not None and inputs_embeds is not None:
@@ -252,7 +260,9 @@ class DecoderLayer(nn.Module):
             eps=config.layer_norm_eps,
             elementwise_affine=False,
         )
-        self.post_attention_layernorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+        self.post_attention_layernorm = nn.LayerNorm(
+            config.hidden_size, eps=config.layer_norm_eps
+        )
         self.attention = Attention(config)
         self.mlp = MLP(config)
 
@@ -284,7 +294,9 @@ class DecoderLayer(nn.Module):
         hidden_states = hidden_states + mlp_output + attn_output
 
         if use_cache:
-            outputs = (hidden_states,) + outputs  # hidden_states, present, (attn_weights)
+            outputs = (
+                hidden_states,
+            ) + outputs  # hidden_states, present, (attn_weights)
         else:
             outputs = (hidden_states,) + outputs[1:]  # hidden_states, (attn_weights)
 
@@ -299,7 +311,9 @@ class MLP(nn.Module):
         ff_dim = int(8 * hidden_size / 3)
         intermediate_size = multiple_of * ((ff_dim + multiple_of - 1) // multiple_of)
 
-        self.packed_input_proj = torch.nn.Linear(hidden_size, 2 * intermediate_size, bias=False)
+        self.packed_input_proj = torch.nn.Linear(
+            hidden_size, 2 * intermediate_size, bias=False
+        )
         self.out_proj = nn.Linear(intermediate_size, hidden_size, bias=False)
         self.act = nn.SiLU()
 
@@ -332,7 +346,8 @@ class RotaryEmbedding(torch.nn.Module):
         # Set up `scale` term
         self.scale_base = scale_base
         scale = (
-            (torch.arange(0, dim, 2, device=device, dtype=torch.float32) + 0.4 * dim) / (1.4 * dim)
+            (torch.arange(0, dim, 2, device=device, dtype=torch.float32) + 0.4 * dim)
+            / (1.4 * dim)
             if scale_base is not None
             else None
         )
@@ -348,10 +363,18 @@ class RotaryEmbedding(torch.nn.Module):
         power = (seq_range - self.seq_len_cached // 2) / self.scale_base
         scale_cached = self.scale.to(device=power.device) ** power.unsqueeze(-1)
         # scale_cached = torch.cat((scale_cached, scale_cached), dim=-1)
-        self.register_buffer("cos_cached", torch.cos(freqs) * scale_cached, persistent=False)
-        self.register_buffer("sin_cached", torch.sin(freqs) * scale_cached, persistent=False)
-        self.register_buffer("cos_k_cached", torch.cos(freqs) / scale_cached, persistent=False)
-        self.register_buffer("sin_k_cached", torch.sin(freqs) / scale_cached, persistent=False)
+        self.register_buffer(
+            "cos_cached", torch.cos(freqs) * scale_cached, persistent=False
+        )
+        self.register_buffer(
+            "sin_cached", torch.sin(freqs) * scale_cached, persistent=False
+        )
+        self.register_buffer(
+            "cos_k_cached", torch.cos(freqs) / scale_cached, persistent=False
+        )
+        self.register_buffer(
+            "sin_k_cached", torch.sin(freqs) / scale_cached, persistent=False
+        )
 
     def forward(self, x, seq_len=None):
         if seq_len > self.seq_len_cached:
@@ -365,10 +388,18 @@ class RotaryEmbedding(torch.nn.Module):
             power = (seq_range - self.seq_len_cached // 2) / self.scale_base
             scale_cached = self.scale.to(device=power.device) ** power.unsqueeze(-1)
             scale_cached = torch.cat((scale_cached, scale_cached), dim=-1)
-            self.register_buffer("cos_cached", torch.cos(freqs) * scale_cached, persistent=False)
-            self.register_buffer("sin_cached", torch.sin(freqs) * scale_cached, persistent=False)
-            self.register_buffer("cos_k_cached", torch.cos(freqs) / scale_cached, persistent=False)
-            self.register_buffer("sin_k_cached", torch.sin(freqs) / scale_cached, persistent=False)
+            self.register_buffer(
+                "cos_cached", torch.cos(freqs) * scale_cached, persistent=False
+            )
+            self.register_buffer(
+                "sin_cached", torch.sin(freqs) * scale_cached, persistent=False
+            )
+            self.register_buffer(
+                "cos_k_cached", torch.cos(freqs) / scale_cached, persistent=False
+            )
+            self.register_buffer(
+                "sin_k_cached", torch.sin(freqs) / scale_cached, persistent=False
+            )
         return (
             self.cos_cached[:seq_len, ...],
             self.sin_cached[:seq_len, ...],
@@ -419,9 +450,9 @@ class Attention(nn.Module):
         max_positions = config.max_position_embeddings
         self.register_buffer(
             "bias",
-            torch.tril(torch.ones((max_positions, max_positions), dtype=torch.bool)).view(
-                1, 1, max_positions, max_positions
-            ),
+            torch.tril(
+                torch.ones((max_positions, max_positions), dtype=torch.bool)
+            ).view(1, 1, max_positions, max_positions),
             persistent=False,
         )
         self.register_buffer("masked_bias", torch.tensor(-1e9), persistent=False)
@@ -442,7 +473,9 @@ class Attention(nn.Module):
             persistent=False,
         )
 
-        self.query_key_value = nn.Linear(self.hidden_size, 3 * self.hidden_size, bias=False)
+        self.query_key_value = nn.Linear(
+            self.hidden_size, 3 * self.hidden_size, bias=False
+        )
         self.dense = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
 
     def forward(
@@ -502,13 +535,17 @@ class Attention(nn.Module):
         present = (key, value) if use_cache else None
 
         # Compute attention
-        attn_output, attn_weights = self._attn(query, key, value, attention_mask, head_mask)
+        attn_output, attn_weights = self._attn(
+            query, key, value, attention_mask, head_mask
+        )
 
         # Merge attn_head_size dim and num_attn_heads dim into hidden dim
         # [bs, seq_len, num_attention_heads, attn_head_size]
         attn_output = attn_output.permute(0, 2, 1, 3).contiguous()
         attn_output = attn_output.view(
-            attn_output.size(0), attn_output.size(1), self.num_attention_heads * self.head_size
+            attn_output.size(0),
+            attn_output.size(1),
+            self.num_attention_heads * self.head_size,
         )
 
         attn_output = self.dense(attn_output)
@@ -526,9 +563,13 @@ class Attention(nn.Module):
         batch_size, num_attention_heads, query_length, attn_head_size = query.size()
         key_length = key.size(-2)
 
-        causal_mask = self.bias[:, :, key_length - query_length : key_length, :key_length]
+        causal_mask = self.bias[
+            :, :, key_length - query_length : key_length, :key_length
+        ]
 
-        query = query.view(batch_size * num_attention_heads, query_length, attn_head_size)
+        query = query.view(
+            batch_size * num_attention_heads, query_length, attn_head_size
+        )
         key = key.view(batch_size * num_attention_heads, key_length, attn_head_size)
         attn_scores = torch.zeros(
             batch_size * num_attention_heads,
@@ -543,16 +584,22 @@ class Attention(nn.Module):
             key.transpose(1, 2),
             beta=1.0,
             alpha=(
-                torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device)
+                torch.tensor(
+                    1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device
+                )
                 / self.norm_factor
             ),
         )
-        attn_scores = attn_scores.view(batch_size, num_attention_heads, query_length, key_length)
+        attn_scores = attn_scores.view(
+            batch_size, num_attention_heads, query_length, key_length
+        )
 
         mask_value = torch.finfo(attn_scores.dtype).min
         # Need to be a tensor, otherwise we get error: `RuntimeError: expected scalar type float but found double`.
         # Need to be on the same device, otherwise `RuntimeError: ..., x and y to be on the same device`
-        mask_value = torch.tensor(mask_value, dtype=attn_scores.dtype, device=attn_scores.device)
+        mask_value = torch.tensor(
+            mask_value, dtype=attn_scores.dtype, device=attn_scores.device
+        )
         attn_scores = torch.where(causal_mask, attn_scores, mask_value)
 
         if attention_mask is not None:
@@ -560,9 +607,9 @@ class Attention(nn.Module):
             attn_scores = attn_scores + attention_mask
 
         # NOTE: Upcast to float32
-        attn_weights = nn.functional.softmax(attn_scores, dim=-1, dtype=torch.float32).type_as(
-            value
-        )
+        attn_weights = nn.functional.softmax(
+            attn_scores, dim=-1, dtype=torch.float32
+        ).type_as(value)
 
         # Mask heads if we want to
         if head_mask is not None:
@@ -626,7 +673,9 @@ class JapaneseStableLMAlphaForCausalLM(JapaneseStableLMAlphaPreTrainedModel):
 
         >>> prediction_logits = outputs.logits
         ```"""
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         outputs = self.transformer(
             input_ids,
@@ -652,7 +701,9 @@ class JapaneseStableLMAlphaForCausalLM(JapaneseStableLMAlphaPreTrainedModel):
             shift_logits = lm_logits[:, :-1, :].contiguous()
             labels = labels[:, 1:].contiguous()
             loss_fct = CrossEntropyLoss()
-            lm_loss = loss_fct(shift_logits.view(-1, shift_logits.size(-1)), labels.view(-1))
+            lm_loss = loss_fct(
+                shift_logits.view(-1, shift_logits.size(-1)), labels.view(-1)
+            )
 
         if not return_dict:
             output = (lm_logits,) + outputs[1:]
@@ -667,7 +718,12 @@ class JapaneseStableLMAlphaForCausalLM(JapaneseStableLMAlphaPreTrainedModel):
         )
 
     def prepare_inputs_for_generation(
-        self, input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None, **kwargs
+        self,
+        input_ids,
+        past_key_values=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        **kwargs,
     ):
         input_shape = input_ids.shape
 
@@ -707,7 +763,10 @@ class JapaneseStableLMAlphaForCausalLM(JapaneseStableLMAlphaPreTrainedModel):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx) for past_state in layer_past[:2])
+                tuple(
+                    past_state.index_select(0, beam_idx)
+                    for past_state in layer_past[:2]
+                )
                 + layer_past[2:],
             )
         return reordered_past

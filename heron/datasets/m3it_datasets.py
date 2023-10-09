@@ -53,7 +53,8 @@ class M3ITDataset(ResilientDataset):
         is_inference: bool = False,
     ):
         dataset_list = [
-            datasets.load_dataset("MMInstruction/M3IT", i, num_proc=16) for i in dataset_config["dataset_names"]
+            datasets.load_dataset("MMInstruction/M3IT", i, num_proc=16)
+            for i in dataset_config["dataset_names"]
         ]
 
         # some dataset have no validation

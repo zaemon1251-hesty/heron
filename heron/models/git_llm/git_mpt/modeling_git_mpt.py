@@ -54,7 +54,9 @@ class GitMptConfig(MptConfig):
     ):
         super().__init__(**kwargs)
         if hasattr(self, "vision_model_name"):
-            self.set_vision_configs(self.num_image_with_embedding, self.vision_model_name)
+            self.set_vision_configs(
+                self.num_image_with_embedding, self.vision_model_name
+            )
         else:
             self.vision_config = CLIPVisionConfig()
             self.num_image_with_embedding = None
@@ -94,7 +96,9 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] 
 
     inverted_mask = 1.0 - expanded_mask
 
-    return inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
+    return inverted_mask.masked_fill(
+        inverted_mask.to(torch.bool), torch.finfo(dtype).min
+    )
 
 
 class GitMptModel(MptModel):
@@ -132,7 +136,9 @@ class GitMptModel(MptModel):
         self, size: int, dtype: torch.dtype, device: torch.device
     ) -> torch.Tensor:
         # Default mask is for forward direction. Flip for backward direction.
-        mask = torch.triu(torch.ones(size, size, device=device, dtype=dtype), diagonal=1)
+        mask = torch.triu(
+            torch.ones(size, size, device=device, dtype=dtype), diagonal=1
+        )
         mask = mask.masked_fill(mask == 1, float("-inf"))
         return mask
 
@@ -180,7 +186,9 @@ class GitMptModel(MptModel):
         # if it is False, it means valid. That is, it is not a padding
         if memory_key_padding_mask.dtype != torch.bool:
             raise ValueError("Memory key padding mask must be a boolean tensor.")
-        zero_negative_infinity = torch.zeros_like(memory_key_padding_mask, dtype=tgt.dtype)
+        zero_negative_infinity = torch.zeros_like(
+            memory_key_padding_mask, dtype=tgt.dtype
+        )
         zero_negative_infinity[memory_key_padding_mask] = float("-inf")
         full_attention_mask = full_attention_mask.expand(
             (
@@ -234,7 +242,9 @@ class GitMptModel(MptModel):
             else self.config.output_hidden_states
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
@@ -286,7 +296,9 @@ class GitMptModel(MptModel):
         # embed positions
         if attention_mask is None:
             attention_mask = torch.ones(
-                (batch_size, seq_length_with_past), dtype=torch.bool, device=inputs_embeds.device
+                (batch_size, seq_length_with_past),
+                dtype=torch.bool,
+                device=inputs_embeds.device,
             )
 
         embedding_output = inputs_embeds
@@ -334,7 +346,9 @@ class GitMptModel(MptModel):
                 attention_mask, embedding_output.dtype, tgt_len=input_shape[-1]
             ).to(embedding_output.device)
             if past_key_values_length > 0:
-                expanded_attn_mask = expanded_attn_mask[:, :, -past_key_values_length:, :]
+                expanded_attn_mask = expanded_attn_mask[
+                    :, :, -past_key_values_length:, :
+                ]
             else:
                 combined_attention_mask[
                     :, :, -input_shape[1] :, -input_shape[1] :
@@ -372,7 +386,9 @@ class GitMptModel(MptModel):
                     def custom_forward(*inputs):
                         # None for past_key_value
                         return module(
-                            *inputs, use_cache=use_cache, output_attentions=output_attentions
+                            *inputs,
+                            use_cache=use_cache,
+                            output_attentions=output_attentions,
                         )
 
                     return custom_forward
@@ -400,7 +416,9 @@ class GitMptModel(MptModel):
                 presents = presents + (outputs[1],)
 
             if output_attentions:
-                all_self_attentions = all_self_attentions + (outputs[2 if use_cache else 1],)
+                all_self_attentions = all_self_attentions + (
+                    outputs[2 if use_cache else 1],
+                )
 
         # Add last hidden state
         hidden_states = self.norm_f(hidden_states)
@@ -412,7 +430,12 @@ class GitMptModel(MptModel):
         if not return_dict:
             return tuple(
                 v
-                for v in [hidden_states, presents, all_hidden_states, all_self_attentions]
+                for v in [
+                    hidden_states,
+                    presents,
+                    all_hidden_states,
+                    all_self_attentions,
+                ]
                 if v is not None
             )
 
@@ -473,7 +496,9 @@ class GitMptForCausalLM(MptForCausalLM):
 
         Returns:
         """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
         if labels is not None:
             use_cache = False
 
@@ -499,7 +524,9 @@ class GitMptForCausalLM(MptForCausalLM):
             shifted_logits = logits[:, num_image_tokens:-1, :].contiguous()
             labels = labels[:, 1:].contiguous()
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shifted_logits.view(-1, self.config.vocab_size), labels.view(-1))
+            loss = loss_fct(
+                shifted_logits.view(-1, self.config.vocab_size), labels.view(-1)
+            )
 
         if not return_dict:
             output = (logits,) + outputs[1:]
@@ -539,7 +566,9 @@ class GitMptForCausalLM(MptForCausalLM):
         }
 
     def _reorder_cache(
-        self, past: Tuple[Tuple[torch.Tensor, torch.Tensor], ...], beam_idx: torch.LongTensor
+        self,
+        past: Tuple[Tuple[torch.Tensor, torch.Tensor], ...],
+        beam_idx: torch.LongTensor,
     ) -> Tuple[Tuple[torch.Tensor, torch.Tensor], ...]:
         """
         This function is used to re-order the `past_key_values` cache if [`~PreTrainedModel.beam_search`] or

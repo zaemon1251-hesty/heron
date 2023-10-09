@@ -26,10 +26,13 @@ from typing import List, Optional, Union
 
 from transformers.image_utils import ImageInput
 from transformers.processing_utils import ProcessorMixin
-from transformers.tokenization_utils_base import (BatchEncoding,
-                                                  PaddingStrategy,
-                                                  PreTokenizedInput, TextInput,
-                                                  TruncationStrategy)
+from transformers.tokenization_utils_base import (
+    BatchEncoding,
+    PaddingStrategy,
+    PreTokenizedInput,
+    TextInput,
+    TruncationStrategy,
+)
 from transformers.utils import TensorType
 
 
@@ -60,7 +63,9 @@ class VideoBlipProcessor(ProcessorMixin):
     def __call__(
         self,
         images=None,
-        text: Union[TextInput, PreTokenizedInput, List[TextInput], List[PreTokenizedInput]] = None,
+        text: Union[
+            TextInput, PreTokenizedInput, List[TextInput], List[PreTokenizedInput]
+        ] = None,
         add_special_tokens: bool = True,
         padding: Union[bool, str, PaddingStrategy] = False,
         truncation: Union[bool, str, TruncationStrategy] = None,
@@ -110,7 +115,9 @@ class VideoBlipProcessor(ProcessorMixin):
             return text_encoding
 
         # add pixel_values
-        encoding_image_processor = self.image_processor(images, return_tensors=return_tensors)
+        encoding_image_processor = self.image_processor(
+            images, return_tensors=return_tensors
+        )
 
         if text is not None:
             text_encoding = self.tokenizer(

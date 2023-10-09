@@ -112,6 +112,7 @@ def load_model(
         model = VideoBlipForConditionalGeneration.create(
             language_model, num_frames=num_image_with_embedding, torch_dtype=torch_dtype
         )
+        assert model is not None, "mode should be specified"
 
     else:
         raise ValueError(f"{model_type} is not supported.")
@@ -144,7 +145,9 @@ def apply_lora_model(model: GitLLMForCausalLM, model_config: Dict) -> GitLLMForC
     return model
 
 
-def unload_and_merge_lora(model: GitLLMForCausalLM, model_config: Dict) -> GitLLMForCausalLM:
+def unload_and_merge_lora(
+    model: GitLLMForCausalLM, model_config: Dict
+) -> GitLLMForCausalLM:
     """Unload and merge LoRA"""
     model_type = model_config["model_type"]
     if model_type == "git_llm":
@@ -191,6 +194,8 @@ def set_trainable_params(
                 untrainable_list.append(name)
 
     else:
-        raise ValueError("either keys_to_freeze or keys_to_finetune should be specified")
+        raise ValueError(
+            "either keys_to_freeze or keys_to_finetune should be specified"
+        )
 
     return trainable_list, untrainable_list

@@ -2,9 +2,9 @@ from pathlib import Path
 import pandas as pd
 import ast
 
-SPLIT = "valid"
+SPLIT = "train"
 
-DATA_DIR = Path("data/Soccernet")
+DATA_DIR = Path("data/SoccerNet")
 
 INVALID_CSV_PATH = DATA_DIR / f"invalid_data_{SPLIT}.csv"
 CAPTION_CSV_PATH = DATA_DIR / f"soccernet_{SPLIT}.csv"
@@ -41,11 +41,11 @@ def save_modified_invalid_csv(invalid_df):
     return invalid_df
 
 
-invalid_df = save_modified_invalid_csv(invalid_df)
+# invalid_df = save_modified_invalid_csv(invalid_df)
 
-merged_train_df = pd.merge(
-    caption_df, metadata_df, how="left", on="caption"
-).drop_duplicates(subset=["caption"])
+# merged_train_df = pd.merge(
+#     caption_df, metadata_df, how="left", on="caption"
+# ).drop_duplicates(subset=["caption"])
 
 
 def save_invalid_csv():
@@ -56,7 +56,7 @@ def save_invalid_csv():
     merged_invalid_train_df.to_csv(MERGED_INVALID_CSV_PATH, index=False)
 
 
-save_invalid_csv()
+# save_invalid_csv()
 
 
 def save_cleaned_csv():
@@ -72,4 +72,13 @@ def save_cleaned_csv():
     merged_cleaned_df.to_csv(MERGED_CLEANED_CSV_PATH, index=False)
 
 
-save_cleaned_csv()
+def fill_prompt():
+    merged_cleaned_df = pd.read_csv(MERGED_CLEANED_CSV_PATH, delimiter=",", dtype=str)
+    merged_cleaned_df[
+        "prompt"
+    ] = "This is soccer video frames. Make a caption with emotion and detail information."
+    merged_cleaned_df.to_csv(MERGED_CLEANED_CSV_PATH, index=False)
+
+
+fill_prompt()
+# save_cleaned_csv()

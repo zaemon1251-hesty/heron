@@ -60,14 +60,18 @@ class JapaneseCSVDataset(BaseDataset):
         target_dataset_list = []
         if "coco" in dataset_config["dataset_names"]:
             if split == "train":
-                df_train = pd.read_csv(os.path.join(dataset_root, "data/coco/df_train.csv"))
+                df_train = pd.read_csv(
+                    os.path.join(dataset_root, "data/coco/df_train.csv")
+                )
                 target_dataset_list.append(df_train)
             else:
                 df_val = pd.read_csv(os.path.join(dataset_root, "data/coco/df_val.csv"))
                 target_dataset_list.append(df_val)
 
         if "visual_genome" in dataset_config["dataset_names"]:
-            df_vg = pd.read_csv(os.path.join(dataset_root, "data/visual_genome_ja/df_vg.csv"))
+            df_vg = pd.read_csv(
+                os.path.join(dataset_root, "data/visual_genome_ja/df_vg.csv")
+            )
             if split != "train":
                 val_ratio = 0.1
                 num_val = int(len(df_vg) * val_ratio)
@@ -98,16 +102,20 @@ class JapaneseCSVDataset(BaseDataset):
         if self.is_inference:
             kwargs = {}
         else:
-            kwargs = {"padding": "max_length", "max_length": self.max_length, "truncation": True}
+            kwargs = {
+                "padding": "max_length",
+                "max_length": self.max_length,
+                "truncation": True,
+            }
         return self.processor.tokenizer(text=text, return_tensors="pt", **kwargs)
 
     def _get_item_train(self, index):
         # cf: https://huggingface.co/datasets/MMInstruction/M3IT#data-instances
         img_path = self.unique_img_path[index]
 
-        df_interest = self.loaded_dataset[self.loaded_dataset.img_path == img_path].reset_index(
-            drop=True
-        )
+        df_interest = self.loaded_dataset[
+            self.loaded_dataset.img_path == img_path
+        ].reset_index(drop=True)
         text = ""
 
         # concatenate text data
@@ -146,9 +154,9 @@ class JapaneseCSVDataset(BaseDataset):
         # cf: https://huggingface.co/datasets/MMInstruction/M3IT#data-instances
         img_path = self.unique_img_path[index]
 
-        df_interest = self.loaded_dataset[self.loaded_dataset.img_path == img_path].reset_index(
-            drop=True
-        )
+        df_interest = self.loaded_dataset[
+            self.loaded_dataset.img_path == img_path
+        ].reset_index(drop=True)
         text = ""
 
         row = df_interest.iloc[0]

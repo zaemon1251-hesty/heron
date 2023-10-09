@@ -66,7 +66,9 @@ def main(path_to_coco: str) -> None:
         for i in tqdm.tqdm(range(len(df_coco))):
             row = df_coco.iloc[i]
             image_id = row.image_id
-            img_path = path_to_coco_abs + f"{target}2014/COCO_{target}2014_{image_id:012}.jpg"
+            img_path = (
+                path_to_coco_abs + f"{target}2014/COCO_{target}2014_{image_id:012}.jpg"
+            )
             if os.path.exists(img_path):
                 img_path_list.append(img_path)
                 caption_list.append(row.caption)

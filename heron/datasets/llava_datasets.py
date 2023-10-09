@@ -94,7 +94,11 @@ class LlavaDataset(BaseDataset):
         if self.is_inference:
             kwargs = {}
         else:
-            kwargs = {"padding": "max_length", "max_length": self.max_length, "truncation": True}
+            kwargs = {
+                "padding": "max_length",
+                "max_length": self.max_length,
+                "truncation": True,
+            }
         return self.processor.tokenizer(text=text, return_tensors="pt", **kwargs)
 
     def __len__(self) -> int:

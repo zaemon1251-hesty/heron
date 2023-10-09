@@ -30,8 +30,7 @@ from typing import Union
 from transformers import AutoConfig
 from transformers.configuration_utils import PretrainedConfig
 from transformers.models.auto import CONFIG_MAPPING
-from transformers.models.auto.modeling_auto import \
-    MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
+from transformers.models.auto.modeling_auto import MODEL_FOR_CAUSAL_LM_MAPPING_NAMES
 from transformers.utils import logging
 
 logger = logging.get_logger(__name__)
@@ -138,7 +137,9 @@ class VideoBlipVisionConfig(PretrainedConfig):
     def from_pretrained(
         cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs
     ) -> "PretrainedConfig":
-        config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
+        config_dict, kwargs = cls.get_config_dict(
+            pretrained_model_name_or_path, **kwargs
+        )
 
         # get the vision config dict if we are loading from Blip2Config
         if config_dict.get("model_type") == "blip-2":
@@ -264,7 +265,9 @@ class VideoBlipQFormerConfig(PretrainedConfig):
     def from_pretrained(
         cls, pretrained_model_name_or_path: Union[str, os.PathLike], **kwargs
     ) -> "PretrainedConfig":
-        config_dict, kwargs = cls.get_config_dict(pretrained_model_name_or_path, **kwargs)
+        config_dict, kwargs = cls.get_config_dict(
+            pretrained_model_name_or_path, **kwargs
+        )
 
         # get the qformer config dict if we are loading from Blip2Config
         if config_dict.get("model_type") == "blip-2":
@@ -371,14 +374,18 @@ class VideoBlipConfig(PretrainedConfig):
 
         self.vision_config = VideoBlipVisionConfig(**vision_config)
         self.qformer_config = VideoBlipQFormerConfig(**qformer_config)
-        text_model_type = text_config["model_type"] if "model_type" in text_config else "opt"
+        text_model_type = (
+            text_config["model_type"] if "model_type" in text_config else "opt"
+        )
         if text_model_type == "":
             text_model_type = "gpt_neox"
 
         # self.text_config = CONFIG_MAPPING[text_model_type](**text_config)
         model_path = text_config["_name_or_path"]
         print("model_path", model_path)
-        self.text_config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+        self.text_config = AutoConfig.from_pretrained(
+            model_path, trust_remote_code=True
+        )
 
         self.tie_word_embeddings = self.text_config.tie_word_embeddings
         self.is_encoder_decoder = self.text_config.is_encoder_decoder

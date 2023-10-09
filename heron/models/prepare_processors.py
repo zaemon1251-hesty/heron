@@ -46,7 +46,9 @@ def get_tokenizer(language_model_name: str) -> "Tokenizer":
         return tokenizer
 
     elif "ELYZA" in language_model_name:
-        tokenizer = AutoTokenizer.from_pretrained(language_model_name, padding_side="right")
+        tokenizer = AutoTokenizer.from_pretrained(
+            language_model_name, padding_side="right"
+        )
         return tokenizer
 
     elif "open-calm" in language_model_name:
@@ -62,7 +64,7 @@ def get_tokenizer(language_model_name: str) -> "Tokenizer":
         tokenizer.pad_token = tokenizer.eos_token
         return tokenizer
 
-    elif "Llama" in language_model_name:
+    elif "Llama" in language_model_name or "llama" in language_model_name:
         tokenizer = AutoTokenizer.from_pretrained(
             language_model_name, padding_side="right", use_fast=False
         )
@@ -95,7 +97,9 @@ def get_processor(model_config: Dict) -> "Processor":
         processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
     else:
-        raise NotImplementedError(f"Processor for model_type: {model_type} is not implemented.")
+        raise NotImplementedError(
+            f"Processor for model_type: {model_type} is not implemented."
+        )
 
     processor.tokenizer = get_tokenizer(language_model_name)
 

@@ -46,7 +46,9 @@ class GitOPTConfig(OPTConfig):
     ):
         super().__init__(**kwargs)
         if hasattr(self, "vision_model_name"):
-            self.set_vision_configs(self.num_image_with_embedding, self.vision_model_name)
+            self.set_vision_configs(
+                self.num_image_with_embedding, self.vision_model_name
+            )
         else:
             self.vision_config = CLIPVisionConfig()
             self.num_image_with_embedding = None
@@ -85,7 +87,9 @@ def _expand_mask(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] 
 
     inverted_mask = 1.0 - expanded_mask
 
-    return inverted_mask.masked_fill(inverted_mask.to(torch.bool), torch.finfo(dtype).min)
+    return inverted_mask.masked_fill(
+        inverted_mask.to(torch.bool), torch.finfo(dtype).min
+    )
 
 
 class GitOPTModel(OPTModel):
@@ -135,7 +139,9 @@ class GitOPTModel(OPTModel):
         self, size: int, dtype: torch.dtype, device: torch.device
     ) -> torch.Tensor:
         # Default mask is for forward direction. Flip for backward direction.
-        mask = torch.triu(torch.ones(size, size, device=device, dtype=dtype), diagonal=1)
+        mask = torch.triu(
+            torch.ones(size, size, device=device, dtype=dtype), diagonal=1
+        )
         mask = mask.masked_fill(mask == 1, float("-inf"))
         return mask
 
@@ -183,7 +189,9 @@ class GitOPTModel(OPTModel):
         # if it is False, it means valid. That is, it is not a padding
         if memory_key_padding_mask.dtype != torch.bool:
             raise ValueError("Memory key padding mask must be a boolean tensor.")
-        zero_negative_infinity = torch.zeros_like(memory_key_padding_mask, dtype=tgt.dtype)
+        zero_negative_infinity = torch.zeros_like(
+            memory_key_padding_mask, dtype=tgt.dtype
+        )
         zero_negative_infinity[memory_key_padding_mask] = float("-inf")
         full_attention_mask = full_attention_mask.expand(
             (
@@ -239,7 +247,9 @@ class GitOPTModel(OPTModel):
             else self.config.output_hidden_states
         )
         use_cache = use_cache if use_cache is not None else self.config.use_cache
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError(
@@ -300,7 +310,9 @@ class GitOPTModel(OPTModel):
 
         # embed positions
         if attention_mask is None:
-            attention_mask = torch.ones(batch_size, mask_seq_length, device=inputs_embeds.device)
+            attention_mask = torch.ones(
+                batch_size, mask_seq_length, device=inputs_embeds.device
+            )
         elif attention_mask.shape[1] != mask_seq_length:
             raise ValueError(
                 f"The provided attention mask has length {attention_mask.shape[1]}, but its length should be "
@@ -353,7 +365,9 @@ class GitOPTModel(OPTModel):
                 attention_mask, embedding_output.dtype, tgt_len=input_shape[-1]
             ).to(embedding_output.device)
             if past_key_values_length > 0:
-                expanded_attn_mask = expanded_attn_mask[:, :, -past_key_values_length:, :]
+                expanded_attn_mask = expanded_attn_mask[
+                    :, :, -past_key_values_length:, :
+                ]
             else:
                 combined_attention_mask[
                     :, :, -input_shape[1] :, -input_shape[1] :
@@ -373,7 +387,9 @@ class GitOPTModel(OPTModel):
             # if self.training and (dropout_probability < self.layerdrop):
             #     continue
 
-            past_key_value = past_key_values[idx] if past_key_values is not None else None
+            past_key_value = (
+                past_key_values[idx] if past_key_values is not None else None
+            )
 
             if self.decoder.gradient_checkpointing and self.decoder.training:
 
@@ -485,7 +501,9 @@ class GitOPTForCausalLM(OPTForCausalLM):
 
         Returns:
         """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
         if labels is not None:
             use_cache = False
 
@@ -513,7 +531,9 @@ class GitOPTForCausalLM(OPTForCausalLM):
             shifted_logits = logits[:, num_image_tokens:-1, :].contiguous()
             labels = labels[:, 1:].contiguous()
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(shifted_logits.view(-1, self.config.vocab_size), labels.view(-1))
+            loss = loss_fct(
+                shifted_logits.view(-1, self.config.vocab_size), labels.view(-1)
+            )
 
         if not return_dict:
             output = (logits,) + outputs[1:]
@@ -556,6 +576,8 @@ class GitOPTForCausalLM(OPTForCausalLM):
         reordered_past = ()
         for layer_past in past_key_values:
             reordered_past += (
-                tuple(past_state.index_select(0, beam_idx) for past_state in layer_past),
+                tuple(
+                    past_state.index_select(0, beam_idx) for past_state in layer_past
+                ),
             )
         return reordered_past
