@@ -128,6 +128,9 @@ def parse_arguments():
         "--img_path", type=str, required=True, help="Path to the input image."
     )
     parser.add_argument(
+        "--weights_path", type=str, required=True, help="Expected gold caption."
+    )
+    parser.add_argument(
         "--gold_caption", type=str, required=True, help="Expected gold caption."
     )
 
@@ -140,10 +143,8 @@ def main(args):
 
     processor = AutoProcessor.from_pretrained("Salesforce/blip2-opt-2.7b")
 
-    if model_config.get("pretrained_path") is not None:
-        processor.tokenizer = AutoTokenizer.from_pretrained(
-            model_config.get("pretrained_path")
-        )
+    if args.weights_path is not None:
+        processor.tokenizer = AutoTokenizer.from_pretrained(args.weights_path)
 
     model = prepare_model(model_config, processor.tokenizer, args.device_id)
 
@@ -180,7 +181,7 @@ def main(args):
         ] = generated_caption
 
     logger.info(args.gold_caption)
-    logger.info(generated_caption)
+    logger.info(generated_captions)
 
 
 if __name__ == "__main__":

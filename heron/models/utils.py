@@ -33,6 +33,10 @@ def load_model(
     num_image_with_embedding = model_config["num_image_with_embedding"]
 
     # set dtype
+    if model_config.get("fp16", False) and model_config.get("bf16", False):
+        raise ValueError("fp16 and bf16 cannot be set at the same time.")
+    elif model_config.get("bf16", False):
+        torch_dtype = torch.bfloat16
     if model_config.get("fp16", False):
         torch_dtype = torch.float16
     else:

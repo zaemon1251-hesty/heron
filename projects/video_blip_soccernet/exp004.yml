@@ -2,15 +2,15 @@ training_config:
   per_device_train_batch_size: 1
   per_device_eval_batch_size: 1
   gradient_accumulation_steps: 16
-  num_train_epochs: 50
+  num_train_epochs: 3
   dataloader_num_workers: 8
   fp16: true
   optim: "adamw_torch"
-  learning_rate: 1.0e-4
-  logging_steps: 10
+  learning_rate: 4.0e-4
+  logging_steps: 5
   evaluation_strategy: "steps"
   save_strategy: "steps"
-  save_steps: 250
+  save_steps: 5
   # do_train: False              # 学習を行わない
   # do_eval: True            # 評価のみを行う
   logging_dir: "./log"         # ログの保存場所
@@ -23,7 +23,7 @@ training_config:
 
 model_config:
   fp16: true
-  pretrained_path: /raid/moriy/model/heron/video_blip_soccernet/exp002/video_blip_soccernet/exp002_final
+  pretrained_path: /raid/moriy/model/heron/video_blip_soccernet/exp003-bf16/video_blip_soccernet/exp003-bf16_final
   model_type: video_blip
   language_model_name: daryl149/llama-2-7b-chat-hf
   num_image_with_embedding: 16 # 1 for image, otherwise for number of video sequences
@@ -31,15 +31,21 @@ model_config:
   keys_to_finetune: []
   keys_to_freeze:
     - vision_model
-    - language_model
+    - qformer
 
-  use_lora: false
+  use_lora: true
   lora:
-    r: 8
-    lora_alpha: 32
+    r: 16
+    lora_alpha: 16
     target_modules:
-      - query_key_value
-    lora_dropout: 0.01
+      # - v_proj
+      # - q_proj
+      # - k_proj
+      # - o_proj
+      - gate_proj
+      - down_proj
+      - up_proj
+    lora_dropout: 0.05
     bias: none
     task_type: CAUSAL_LM
 

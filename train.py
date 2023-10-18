@@ -32,8 +32,15 @@ from heron.models.utils import (
 from heron.models.vision_language_trainer import VisionLanguageTrainer as Trainer
 
 from evaluator import Evaler  # noqa
+from loguru import logger
+from datetime import datetime
 
 GitLLMForCausalLM = Any
+
+current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+log_filename = f"log/train_{current_time}.log"
+
+logger.add(log_filename, rotation="500 MB")
 
 
 def main(config_file: str, local_rank: int = 0):
@@ -68,9 +75,9 @@ def main(config_file: str, local_rank: int = 0):
 
     # load pretrained weight
     if model_config.get("pretrained_path") is not None:
-        print("load pretrained")
+        logger.info("load pretrained")
         load_pretrained_weight(model, model_config["pretrained_path"])
-        print(
+        logger.info(
             f'Successfully loading pretrained weights from {model_config["pretrained_path"]}'
         )
 
@@ -78,8 +85,11 @@ def main(config_file: str, local_rank: int = 0):
     trainable_list, untrainable_list = set_trainable_params(
         model, keys_to_finetune, keys_to_freeze, train_lora=model_config["use_lora"]
     )
-    print("trainable_list", trainable_list)
-    print("untrainable_list", untrainable_list)
+    if model_config["use_lora"]:
+        model = apply_lora_model(model, model_config)
+
+    logger.info(f"trainable_list\n{trainable_list}")
+    logger.info(f"untrainable_list\n{untrainable_list}")
 
     tokenizer = train_dataset.datasets[0].processor.tokenizer
     # spacyの特別なトークンをリストとしてまとめる
@@ -90,6 +100,7 @@ def main(config_file: str, local_rank: int = 0):
     model.language_model.resize_token_embeddings(len(tokenizer))
 
     # evaler = Evaler(tokenizer)
+    model.summary()
 
     trainer = Trainer(
         model=model,
