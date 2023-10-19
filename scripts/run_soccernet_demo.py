@@ -128,10 +128,16 @@ def parse_arguments():
         "--img_path", type=str, required=True, help="Path to the input image."
     )
     parser.add_argument(
-        "--weights_path", type=str, required=True, help="Expected gold caption."
+        "--weights_path", type=str, required=True, help="trained weights path"
     )
     parser.add_argument(
         "--gold_caption", type=str, required=True, help="Expected gold caption."
+    )
+    parser.add_argument(
+        "--log_wandb",
+        action="store_true",
+        default=False,
+        help="Whether to log to wandb",
     )
 
     return parser.parse_args()
@@ -164,7 +170,7 @@ def main(args):
         "top_k": 0,
         "repetition_penalty": 1.1,
     }
-    generated_captions = {}
+    generated_captions = []
 
     for temperature, top_p, repetition_penalty in product(
         temperature_params, top_p_params, repetition_penalty_params
@@ -176,12 +182,32 @@ def main(args):
         generated_caption = generate_caption(
             model, inputs, processor, model_config, generation_kwargs
         )
-        generated_captions[
-            f"temperature: {temperature}, top_p: {top_p}, repetition_penalty: {repetition_penalty}"
-        ] = generated_caption
+        generated_result = {"caption": generated_caption, "param": generation_kwargs}
+        generated_captions.append(generated_result)
 
     logger.info(args.gold_caption)
     logger.info(generated_captions)
+
+    if args.log_wandb:
+        import wandb
+
+        wandb.init(project="heorn-demo-soccernet", name="demo")
+        wandb.config.update(model_config)
+
+        img_path_list = os.listdir(args.img_path)
+        for idx, img_filename in enumerate(img_path_list):
+            exact_img_path = os.path.join(args.img_path, img_filename)
+            wandb_image = wandb.Image(exact_img_path, caption=f"input image {idx}")
+            wandb.log({f"input_image {idx}": wandb_image})
+
+        wandb.log({"input_image": wandb_image})
+        wandb.log({"gold_caption": args.gold_caption})
+        columns = list(generated_captions[0].keys())
+        data = [
+            list(generated_result.values()) for generated_result in generated_captions
+        ]
+        table = wandb.Table(data=data, columns=columns)
+        wandb.log({"generated_captions": table})
 
 
 if __name__ == "__main__":
