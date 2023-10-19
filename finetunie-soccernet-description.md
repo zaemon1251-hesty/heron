@@ -55,13 +55,13 @@ video_blip をファインチューニングしてみたい。
    - [x] 実行 (おそらく gpu20 でやる)
      - うまく学習できてなさそう。
    - [ ] 工夫、PDCA
-     - [ ] まずはTraining中に評価指標を計算できるようにする (compute_metricsの実装→eval時メモリエラーが起こるので要デバッグ)
+     - [x] まずはTraining中に評価指標を計算できるようにする (compute_metricsの実装→eval時メモリエラーが起こるので要デバッグ)
      - [ ] サブタスクに分解する？
          image-encoder, qformer で正しく画像を認識しできない問題: action spotting, シーングラフ予測
      - [ ] 小さく試行錯誤を繰り返す?
-         - [ ] LoRA なし、image-encoder, llm をフリーズして学習
-         - [ ] LoRA のパラメータ探索
-         - [ ] 非文を生成する問題：もう少し小さな LM での学習を試す（LSTM）
+         - [x] LoRA なし、image-encoder, llm をフリーズして学習
+         - [x] LoRA のパラメータ探索 → Platypus: Quick, Cheap, and Powerful Refinement of LLMs に準拠
+         - [x] 非文を生成する問題：もう少し小さな LM での学習を試す（LSTM）→2段階 fine-tuning で解決
    - [ ] 定量評価
-   - [ ] 定性評価
+   - [x] 定性評価
    - [ ] EvalAI に challenge data の推論結果 を提出
